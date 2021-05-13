@@ -29,22 +29,23 @@ def adjust_learning_rate(optimizer, epoch):
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
 
-
 parser = argparse.ArgumentParser(description='agent model of frature')
 
 parser.add_argument('--trainer_name', default=global_config.getRaw('config', 'model_name'))
 parser.add_argument('--gpu', type=int, default=[0], nargs='+', help='used gpu')
-parser.add_argument('--stage_1', action='store_true', help="Just test and terminate.")
-parser.add_argument('--stage_2', action='store_true', help="Just test and terminate.")
+parser.add_argument('--h2y', action='store_true', help="Hidden to output")
+parser.add_argument('--x2y', action='store_true', help="input to output")
+parser.add_argument('--six_stages', action='store_true', help='2 stages data or 6 stages')
 
 
 args = parser.parse_args()
 
 # global config
 data_path = global_config.getRaw('config', 'data_base_path')
-runs_save_folder = global_config.getRaw('config', 'runs_save_folder')
-model_save_folder = global_config.getRaw('config', 'model_save_folder')
-best_stage_1_model = global_config.getRaw('config', 'best_stage_1_model')
+stages = global_config.getRaw('config', 'stages')
+runs_save_folder = os.path.join(global_config.getRaw('config', 'runs_save_folder'), stages)
+model_save_folder = os.path.join(global_config.getRaw('config', 'model_save_folder'), stages)
+best_h2y_model = global_config.getRaw('config', 'best_h2y_model')
 
 if not os.path.exists(model_save_folder):
     os.makedirs(model_save_folder)
@@ -63,9 +64,12 @@ model_dir = os.path.join(model_save_folder, '%s/' % args.trainer_name)
 
 def main():
     # load data
-    file_path = os.path.join(data_path, 'fracture_20201210.csv')
-
-    dataset = PDDataset(file_path)
+    if args.six_stages:
+        file_path = os.path.join(data_path, '6_stages.csv')
+        dataset = PDDataset('6', file_path)
+    else:
+        file_path = os.path.join(data_path, 'fracture_20201210.csv')
+        dataset = PDDataset('2', file_path)
 
     train_data, val_test_data = train_test_split(dataset, test_size=0.2, random_state=random_seed)
 
@@ -84,12 +88,16 @@ def main():
         shuffle=True,
         num_workers=0,
     )
-
-    net_h2y = NetH2Y(len(dataset.hidden_feat), n_output=len(dataset.out_feat))
-    net_x2y = NetX2Y(add_physical_info, n_feature=len(dataset.in_feat), n_output=len(dataset.out_feat))
+    if args.six_stages:
+        net_h2y = NetH2Y(80, 40, 20, len(dataset.hidden_feat), n_output=len(dataset.out_feat))
+        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(dataset.in_feat),
+                         n_output=len(dataset.out_feat))
+    else:
+        net_h2y = NetH2Y(20, 40, 20, len(dataset.hidden_feat), n_output=len(dataset.out_feat))
+        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(dataset.in_feat), n_output=len(dataset.out_feat))
 
     loss_func = torch.nn.MSELoss()
-    if args.stage_1:
+    if args.h2y:
         optimizer_h2y = torch.optim.Adam(net_h2y.parameters(), lr=base_lr)
         train_writer_h2y = SummaryWriter(os.path.join(runs_save_folder, args.trainer_name + '_h2y'))
 
@@ -107,7 +115,7 @@ def main():
 
         torch.save(best_h2y_model, model_save_folder + "/%s_best_model_h2y.pth" % args.trainer_name)
 
-    if args.stage_2:
+    if args.x2y:
         if add_physical_info:
 
             train_writer_x2y = SummaryWriter(os.path.join(runs_save_folder, args.trainer_name + '_x2y_added'))
@@ -148,7 +156,7 @@ def train(model_1, model_2, optimizer, loss_func, train_writer, loader, add_phys
             loss = loss_func(prediction, y)
         elif stage == 2:
             if add_physical_info:
-                model_1.load_state_dict(torch.load(model_save_folder + "/%s" % best_stage_1_model))
+                model_1.load_state_dict(torch.load(model_save_folder + "/%s" % best_h2y_model))
                 model_1.eval()
                 _, physical_info = model_1(h)
                 model_2.add_physical_info(physical_info)
@@ -195,7 +203,7 @@ def val(model_1, model_2, loss_func, train_writer, loader, add_physical_info, ep
                 loss = loss_func(prediction, y)
             elif stage == 2:
                 if add_physical_info:
-                    model_1.load_state_dict(torch.load(model_save_folder + "/%s" % best_stage_1_model))
+                    model_1.load_state_dict(torch.load(model_save_folder + "/%s" % best_h2y_model))
 
                     _, physical_info = model_1(h)
                     model_2.add_physical_info(physical_info)

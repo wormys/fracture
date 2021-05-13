@@ -6,6 +6,7 @@ Author: worith
 
 import numpy as np
 import os
+import argparse
 from sklearn.tree import DecisionTreeRegressor
 from sklearn.model_selection import train_test_split
 from sklearn import ensemble
@@ -13,6 +14,14 @@ from sklearn.neighbors import KNeighborsRegressor
 from sklearn.svm import SVR
 from config.config import global_config
 from dataset.fracture_dataset import PDDataset
+
+parser = argparse.ArgumentParser(description='agent model of frature')
+
+parser.add_argument('--trainer_name', default=global_config.getRaw('config', 'model_name'))
+parser.add_argument('--gpu', type=int, default=[0], nargs='+', help='used gpu')
+parser.add_argument('--six_stages', action='store_true', help='2 stages data or 6 stages')
+
+args = parser.parse_args()
 
 # global config
 data_path = global_config.getRaw('config', 'data_base_path')
@@ -52,9 +61,12 @@ def my_SVM_Regressor(x_train, y_train):
 
 
 def main():
-    file_path = os.path.join(data_path, 'fracture_20201210.csv')
-
-    dataset = PDDataset(file_path)
+    if args.six_stages:
+        file_path = os.path.join(data_path, '6_stages.csv')
+        dataset = PDDataset('6', file_path)
+    else:
+        file_path = os.path.join(data_path, 'fracture_20201210.csv')
+        dataset = PDDataset('2', file_path)
 
     train_data, val_test_data = train_test_split(dataset, test_size=0.2, random_state=random_seed)
     test_data, val_data = train_test_split(val_test_data, test_size=0.5, random_state=random_seed)

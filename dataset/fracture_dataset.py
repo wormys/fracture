@@ -12,12 +12,16 @@ from config.config import global_config
 
 
 class PDDataset(data.Dataset):
-    def __init__(self, file_path, normalize=True):
+    def __init__(self, split_class, file_path, normalize=True):
         self.data = pd.read_csv(file_path)
         self.data.dropna(axis=0, how='any', inplace=True)
-        self.in_feat = cut_str(global_config.get('feature', 'input_feat'))
-        self.hidden_feat = cut_str(global_config.get('feature', 'hidden_feat'))
-        self.out_feat = cut_str(global_config.get('feature', 'output_feat'))
+        if split_class == '2':
+            self.in_feat = self.data.iloc[:, 0:5].columns.tolist()
+            self.hidden_feat = self.data.iloc[:, 6:].columns.tolist()
+        else:
+            self.in_feat = self.data.iloc[:, 0:13].columns.tolist()
+            self.hidden_feat = self.data.iloc[:, 14:].columns.tolist()
+        self.out_feat = ['NPV']
         if normalize:
             self.data = self.data.apply(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)))
             # self.data = self.data.apply(lambda x: (x - np.mean(x)) / (np.var(x) ))
