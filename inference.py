@@ -51,10 +51,10 @@ best_h2y_model = global_config.getRaw('config', 'best_h2y_model')
 best_x2y_added_model = global_config.getRaw('config', 'best_x2y_added_model')
 best_x2y_model = global_config.getRaw('config', 'best_x2y_model')
 
-
-if args.six_stages:
-    model_save_folder = './checkpoint/six_stages'
-    runs_save_folder = './runs/events/six_stages'
+#
+# if args.six_stages:
+#     model_save_folder = './checkpoint/six_stages'
+#     runs_save_folder = './runs/events/six_stages'
 
 
 if not os.path.exists(model_save_folder):
