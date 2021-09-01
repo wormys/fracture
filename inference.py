@@ -114,11 +114,11 @@ def main():
         pred, target = test(net_h2y, net_x2y, loss_func, test_loader, add_physical_info,
                             stage=2)
         # 归一化还原
-        target = [i * (max_npv - min_npv) + min_npv for i in target]
-        pred = [i * (max_npv - min_npv) + min_npv for i in pred]
-        pred_dict = {'NPV_pred': pred, 'NPV': target}
-        pred_data = pd.DataFrame(pred_dict)
-        pred_data.to_csv('data/%s_pred_NPV.csv' % stages, index=None)
+        # target = [i * (max_npv - min_npv) + min_npv for i in target]
+        # pred = [i * (max_npv - min_npv) + min_npv for i in pred]
+        # pred_dict = {'NPV_pred': pred, 'NPV': target}
+        # pred_data = pd.DataFrame(pred_dict)
+        # pred_data.to_csv('data/%s_pred_NPV.csv' % stages, index=None)
 
 
 def test(model_1, model_2, loss_func, loader, add_physical_info, stage):

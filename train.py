@@ -7,6 +7,7 @@ import torch
 import argparse
 import os
 import time
+import pandas as pd
 import numpy as np
 import copy
 
@@ -21,6 +22,7 @@ from sklearn.model_selection import train_test_split
 
 plt.rcParams['font.size'] = 18
 plt.rcParams['font.sans-serif'] = 'Times New Roman'
+
 
 
 def adjust_learning_rate(optimizer, epoch):
@@ -47,6 +49,8 @@ runs_save_folder = os.path.join(global_config.getRaw('config', 'runs_save_folder
 model_save_folder = os.path.join(global_config.getRaw('config', 'model_save_folder'), stages)
 best_h2y_model = global_config.getRaw('config', 'best_h2y_model')
 
+
+
 if not os.path.exists(model_save_folder):
     os.makedirs(model_save_folder)
 
@@ -57,44 +61,70 @@ base_lr = float(global_config.getRaw('train', 'lr'))
 save_freq = int(global_config.getRaw('train', 'save_freq'))
 random_seed = int(global_config.getRaw('train', 'random_seed'))
 add_physical_info = int(global_config.getRaw('train', 'add_physical_info'))
+noise = float(global_config.getRaw('train', 'is_noise'))
+
+# best_h2y_model = best_h2y_model.replace('h2y', 'h2y_noise_%.4f' % noise)
 
 writer = SummaryWriter(os.path.join(runs_save_folder), '%s' % args.trainer_name)
 model_dir = os.path.join(model_save_folder, '%s/' % args.trainer_name)
+
+np.random.seed(random_seed)
 
 
 def main():
     # load data
     if args.six_stages:
         file_path = os.path.join(data_path, '6_stages.csv')
-        dataset = PDDataset('6', file_path)
+
     else:
         file_path = os.path.join(data_path, 'fracture_20201210.csv')
-        dataset = PDDataset('2', file_path)
 
-    train_data, val_test_data = train_test_split(dataset, test_size=0.2, random_state=random_seed)
+
+    data = pd.read_csv(file_path)
+    data.dropna(axis=0, how='any', inplace=True)
+
+    if noise:
+        noise_data = np.array(data['Fracture Spacing'])
+        noise_data = noise_data + noise * \
+                          np.std(noise_data) * np.random.randn(noise_data.shape[0])
+        data['Fracture Spacing'] = noise_data
+
+    data = data.apply(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)))
+
+    train_data, val_test_data = train_test_split(data, test_size=0.2, random_state=random_seed)
 
     test_data, val_data = train_test_split(val_test_data, test_size=0.5, random_state=random_seed)
 
+    if args.six_stages:
+        train_dataset = PDDataset('6', train_data)
+        val_dataset = PDDataset('6', val_data)
+        test_dataset = PDDataset('6', test_data)
+    else:
+        train_dataset = PDDataset('2', train_data)
+        val_dataset = PDDataset('2', val_data)
+        test_dataset = PDDataset('2', test_data)
+
     train_loader = Data.DataLoader(
-        dataset=train_data,  # torch TensorDataset format
+        dataset=train_dataset,  # torch TensorDataset format
         batch_size=batch_size,  # mini batch size
         shuffle=True,
         num_workers=0,
     )
 
     val_loader = Data.DataLoader(
-        dataset=val_data,  # torch TensorDataset format
+        dataset=val_dataset,  # torch TensorDataset format
         batch_size=batch_size,  # mini batch size
         shuffle=True,
         num_workers=0,
     )
     if args.six_stages:
-        net_h2y = NetH2Y(80, 40, 20, len(dataset.hidden_feat), n_output=len(dataset.out_feat))
-        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(dataset.in_feat),
-                         n_output=len(dataset.out_feat))
+        net_h2y = NetH2Y(80, 40, 20, len(train_dataset.hidden_feat), n_output=len(train_dataset.out_feat))
+        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(train_dataset.in_feat),
+                         n_output=len(train_dataset.out_feat))
     else:
-        net_h2y = NetH2Y(20, 40, 20, len(dataset.hidden_feat), n_output=len(dataset.out_feat))
-        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(dataset.in_feat), n_output=len(dataset.out_feat))
+        net_h2y = NetH2Y(20, 40, 20, len(train_dataset.hidden_feat), n_output=len(train_dataset.out_feat))
+        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(train_dataset.in_feat),
+                         n_output=len(train_dataset.out_feat))
 
     loss_func = torch.nn.MSELoss()
     if args.h2y:
@@ -113,17 +143,17 @@ def main():
                 best_h2y_error = h2y_error
                 best_h2y_model = copy.deepcopy(net_h2y.state_dict())
 
-        torch.save(best_h2y_model, model_save_folder + "/%s_best_model_h2y.pth" % args.trainer_name)
+        torch.save(best_h2y_model, model_save_folder + "/%s_best_model_h2y.pth" % (args.trainer_name))
 
     if args.x2y:
         if add_physical_info:
 
-            train_writer_x2y = SummaryWriter(os.path.join(runs_save_folder, args.trainer_name + '_x2y_added'))
-            save_x2y_model_path = model_save_folder + "/%s_best_model_x2y_added.pth" % args.trainer_name
+            train_writer_x2y = SummaryWriter(os.path.join(runs_save_folder, args.trainer_name + '_x2y_added_noise_%.4f' % noise))
+            save_x2y_model_path = model_save_folder + "/%s_best_model_x2y_added_noise_%.4f.pth" % (args.trainer_name, noise)
         else:
 
-            train_writer_x2y = SummaryWriter(os.path.join(runs_save_folder, args.trainer_name + '_x2y'))
-            save_x2y_model_path = model_save_folder + "/%s_best_model_x2y.pth" % args.trainer_name
+            train_writer_x2y = SummaryWriter(os.path.join(runs_save_folder, args.trainer_name + '_x2y_noise_%.4f' % noise))
+            save_x2y_model_path = model_save_folder + "/%s_best_model_x2y_noise_%.4f.pth" % (args.trainer_name, noise)
         optimizer_x2y = torch.optim.Adam(net_x2y.parameters(), lr=base_lr)
 
         best_x2y_error = np.inf
