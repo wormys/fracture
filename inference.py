@@ -43,6 +43,7 @@ parser.add_argument('--six_stages', action='store_true', help='2 stages data or 
 args = parser.parse_args()
 
 # global config
+noise = float(global_config.getRaw('train', 'is_noise'))
 data_path = global_config.getRaw('config', 'data_base_path')
 stages = global_config.getRaw('config', 'stages')
 runs_save_folder = os.path.join(global_config.getRaw('config', 'runs_save_folder'), stages)
@@ -76,34 +77,50 @@ def main():
     # load data
     if args.six_stages:
         file_path = os.path.join(data_path, '6_stages.csv')
-        data = pd.read_csv(file_path)
-        dataset = PDDataset('6', file_path)
+
     else:
         file_path = os.path.join(data_path, 'fracture_20201210.csv')
-        data = pd.read_csv(file_path)
-        dataset = PDDataset('2', file_path)
 
-    npv_data = np.array(data['NPV'])
-    max_npv, min_npv = np.max(npv_data), np.min(npv_data)
 
-    train_data, val_test_data = train_test_split(dataset, test_size=0.2, random_state=random_seed)
+    data = pd.read_csv(file_path)
+    data.dropna(axis=0, how='any', inplace=True)
+
+    if noise:
+        noise_data = np.array(data['Fracture Spacing'])
+        noise_data = noise_data + noise * \
+                          np.std(noise_data) * np.random.randn(noise_data.shape[0])
+        data['Fracture Spacing'] = noise_data
+
+    data = data.apply(lambda x: (x - np.min(x)) / (np.max(x) - np.min(x)))
+
+    train_data, val_test_data = train_test_split(data, test_size=0.2, random_state=random_seed)
 
     test_data, val_data = train_test_split(val_test_data, test_size=0.5, random_state=random_seed)
 
+    if args.six_stages:
+        train_dataset = PDDataset('6', train_data)
+        val_dataset = PDDataset('6', val_data)
+        test_dataset = PDDataset('6', test_data)
+    else:
+        train_dataset = PDDataset('2', train_data)
+        val_dataset = PDDataset('2', val_data)
+        test_dataset = PDDataset('2', test_data)
+
+
     test_loader = Data.DataLoader(
-        dataset=test_data,  # torch TensorDataset format
+        dataset=test_dataset,  # torch TensorDataset format
         batch_size=batch_size,  # mini batch size
         shuffle=True,
         num_workers=0,
     )
 
     if args.six_stages:
-        net_h2y = NetH2Y(80, 40, 20, len(dataset.hidden_feat), n_output=len(dataset.out_feat))
-        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(dataset.in_feat),
-                         n_output=len(dataset.out_feat))
+        net_h2y = NetH2Y(80, 40, 20, len(test_dataset.hidden_feat), n_output=len(test_dataset.out_feat))
+        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(test_dataset.in_feat),
+                         n_output=len(test_dataset.out_feat))
     else:
-        net_h2y = NetH2Y(20, 40, 20, len(dataset.hidden_feat), n_output=len(dataset.out_feat))
-        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(dataset.in_feat), n_output=len(dataset.out_feat))
+        net_h2y = NetH2Y(20, 40, 20, len(test_dataset.hidden_feat), n_output=len(test_dataset.out_feat))
+        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(test_dataset.in_feat), n_output=len(test_dataset.out_feat))
 
     loss_func = torch.nn.MSELoss()
     if args.h2y:
@@ -141,12 +158,12 @@ def test(model_1, model_2, loss_func, loader, add_physical_info, stage):
                     text_name = "x2y_added"
                     model_1.load_state_dict(torch.load(model_save_folder + "/%s" % best_h2y_model))
                     _, physical_info = model_1(h)
-                    model_2.load_state_dict(torch.load(model_save_folder + "/%s" % best_x2y_added_model))
+                    model_2.load_state_dict(torch.load(model_save_folder + "/%s_best_model_x2y_added_noise_%.4f.pth" % (args.trainer_name, noise)))
                     model_2.add_physical_info(physical_info)
                     prediction = model_2(x)
                 else:
                     text_name = "x2y"
-                    model_2.load_state_dict(torch.load(model_save_folder + "/%s" % best_x2y_model))
+                    model_2.load_state_dict(torch.load(model_save_folder + "/%s_best_model_x2y_noise_%.4f.pth" % (args.trainer_name, noise)))
                     prediction = model_2(x)
                 loss = loss_func(prediction, y)
             else:
