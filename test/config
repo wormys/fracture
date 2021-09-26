@@ -1,0 +1,42 @@
+[config]
+data_base_path = F:\sciwork\NN_pro\TEST\fracture-master
+
+model_save_folder = ./checkpoint
+
+model_name = fracture_v1
+
+runs_save_folder = ./runs/events
+
+best_stage_1_model = fracture_v1_best_model_h2y.pth
+
+best_stage_2_added_model = fracture_v1_best_model_x2y_added.pth
+
+best_stage_2_model = fracture_v1_best_model_x2y.pth
+
+[feature]
+input_feat = [Treatment Pressure of Stage 1, Treatment Pressure of Stage 2, Treatment Pressure of Stage 3, Treatment Pressure of Stage 4, Treatment Pressure of Stage 5, Treatment Pressure of Stage 6, Treatment Volume of Stage 1, Treatment Volume of Stage 2, Treatment Volume of Stage 3, Treatment Volume of Stage 4, Treatment Volume of Stage 5, Treatment Volume of Stage 6, Fracture Spacing, Length of Fracture 1, Width of Fracture 1, Length of Fracture 2, Width of Fracture 2, Length of Fracture 3, Width of Fracture 3, Length of Fracture 4, Width of Fracture 4, Length of Fracture 5, Width of Fracture 5, Length of Fracture 6, Width of Fracture 6, Length of Fracture 7, Width of Fracture 7, Length of Fracture 8, Width of Fracture 8, Length of Fracture 9, Width of Fracture 9, Length of Fracture 10, Width of Fracture 10, Length of Fracture 11, Width of Fracture 11, Length of Fracture 12, Width of Fracture 12, Length of Fracture 13, Width of Fracture 13, Length of Fracture 14, Width of Fracture 14, Length of Fracture 15, Width of Fracture 15, Length of Fracture 16, Width of Fracture 16, Length of Fracture 17, Width of Fracture 17, Length of Fracture 18, Width of Fracture 18, Length of Fracture 19, Width of Fracture 19, Length of Fracture 20, Width of Fracture 20, Length of Fracture 21, Width of Fracture 21, Length of Fracture 22, Width of Fracture 22, Length of Fracture 23, Width of Fracture 23, Length of Fracture 24, Width of Fracture 24, Average of Fracture Length, Average of Fracture Width, Variation of Fracture Length, Variation of Fracture Width, Average Area of Fracture]
+
+hidden_feat = [Length of Fracture 1, Width of Fracture 1, Length of Fracture 2, Width of Fracture 2, Length of Fracture 3, Width of Fracture 3, Length of Fracture 4, Width of Fracture 4, Length of Fracture 5, Width of Fracture 5, Length of Fracture 6, Width of Fracture 6, Length of Fracture 7, Width of Fracture 7, Length of Fracture 8, Width of Fracture 8, Length of Fracture 9, Width of Fracture 9, Length of Fracture 10, Width of Fracture 10, Length of Fracture 11, Width of Fracture 11, Length of Fracture 12, Width of Fracture 12, Length of Fracture 13, Width of Fracture 13, Length of Fracture 14, Width of Fracture 14, Length of Fracture 15, Width of Fracture 15, Length of Fracture 16, Width of Fracture 16, Length of Fracture 17, Width of Fracture 17, Length of Fracture 18, Width of Fracture 18, Length of Fracture 19, Width of Fracture 19, Length of Fracture 20, Width of Fracture 20, Length of Fracture 21, Width of Fracture 21, Length of Fracture 22, Width of Fracture 22, Length of Fracture 23, Width of Fracture 23, Length of Fracture 24, Width of Fracture 24, Average of Fracture Length, Average of Fracture Width, Variation of Fracture Length, Variation of Fracture Width, Average Area of Fracture]
+
+
+output_feat = [NPV]
+
+
+[train]
+# lr = 0.001
+# for h2y
+# lr = 0.01
+#
+# batch_size = 32
+
+lr = 0.03
+
+batch_size = 32
+
+num_epochs = 150
+
+random_seed = 1001
+
+save_freq = 2
+
+add_physical_info = 0
