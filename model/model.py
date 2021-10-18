@@ -35,21 +35,23 @@ class NetX2Y(torch.nn.Module):
 
 
 class NetH2Y(torch.nn.Module):
-    def __init__(self, hidden1, hidden2, hidden3, n_feature, n_output):
+    def __init__(self, hidden1, hidden2, hidden3, hidden4, n_feature, n_output):
         super(NetH2Y, self).__init__()
 
         self.hidden1 = torch.nn.Linear(n_feature, hidden1)   # 隐藏层线性输出
         self.hidden2 = torch.nn.Linear(hidden1, hidden2)  # 隐藏层线性输出
         self.hidden3 = torch.nn.Linear(hidden2, hidden3)  # 隐藏层线性输出
-        self.predict = torch.nn.Linear(hidden3, n_output)   # 输出层线性输出
+        self.hidden4 = torch.nn.Linear(hidden3, hidden4)  # 隐藏层线性输出
+        self.predict = torch.nn.Linear(hidden4, n_output)   # 输出层线性输出
         # self.dropout = torch.nn.Dropout(p=0.5)
 
     def forward(self, x):
         x = torch.relu(self.hidden1(x))
         x = torch.relu(self.hidden2(x))
         x = torch.relu(self.hidden3(x))
-        physical_info = x
+        x = torch.relu(self.hidden4(x))
 
+        physical_info = x
         x = self.predict(x)             # 输出值
         if self.training:
             return x

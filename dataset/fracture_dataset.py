@@ -36,6 +36,7 @@ class PDDataset(data.Dataset):
 
         y = torch.from_numpy(self.data.iloc[index, :][self.out_feat].values).float()
 
+        x = torch.cat((x, h))
         return x, h, y
 
     def __len__(self):

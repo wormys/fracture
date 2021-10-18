@@ -24,12 +24,12 @@ plt.rcParams['font.size'] = 18
 plt.rcParams['font.sans-serif'] = 'Times New Roman'
 
 
-
 def adjust_learning_rate(optimizer, epoch):
     """Sets the learning rate to the initial LR decayed by 10 every 150 epochs"""
     lr = base_lr * (0.1 ** (epoch // 25))
     for param_group in optimizer.param_groups:
         param_group['lr'] = lr
+
 
 parser = argparse.ArgumentParser(description='agent model of frature')
 
@@ -118,8 +118,9 @@ def main():
         num_workers=0,
     )
     if args.six_stages:
-        net_h2y = NetH2Y(80, 40, 20, len(train_dataset.hidden_feat), n_output=len(train_dataset.out_feat))
-        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=len(train_dataset.in_feat),
+        net_h2y = NetH2Y(200, 200, 200, 200, len(train_dataset.hidden_feat), n_output=len(train_dataset.out_feat))
+
+        net_x2y = NetX2Y(20, 40, 20, 20, add_physical_info, n_feature=(len(train_dataset.in_feat) + len(train_dataset.hidden_feat)),
                          n_output=len(train_dataset.out_feat))
     else:
         net_h2y = NetH2Y(20, 40, 20, len(train_dataset.hidden_feat), n_output=len(train_dataset.out_feat))
